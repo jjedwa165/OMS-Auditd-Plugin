@@ -156,7 +156,6 @@ void tty_escape_string(std::string& out, const char* in, size_t in_len) {
 }
 
 void json_escape_string(std::string& out, const char* in, size_t in_len) {
-    out.clear();
     auto ptr = in;
     auto end = ptr+in_len;
     for (; ptr < end; ++ptr) {

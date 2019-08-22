@@ -116,9 +116,10 @@ bool InterpretSockaddrField(std::string& out, const EventRecord& record, const E
             addr->sun_path[sizeof(addr->sun_path)] = 0;
             out.append("path=");
             if (addr->sun_path[0] != 0) {
-                out.append(addr->sun_path);
+                json_escape_string(out, addr->sun_path, strlen(addr->sun_path));
             } else {
-                out.append(&addr->sun_path[1]);
+                out.append("\\x00");
+                json_escape_string(out, &addr->sun_path[1], strlen(&addr->sun_path[1]));
             }
             out.append(" }");
             break;
@@ -145,7 +146,7 @@ bool InterpretSockaddrField(std::string& out, const EventRecord& record, const E
         case AF_AX25: {
             auto addr = reinterpret_cast<struct sockaddr_ax25 *>(_buf.data());
             out.append("call=");
-            out.append(addr->sax25_call.ax25_call, sizeof(addr->sax25_call.ax25_call));
+            json_escape_string(out, addr->sax25_call.ax25_call, sizeof(addr->sax25_call.ax25_call));
             out.append(" }");
             break;
         }
@@ -169,7 +170,7 @@ bool InterpretSockaddrField(std::string& out, const EventRecord& record, const E
             auto addr = reinterpret_cast<struct sockaddr_x25 *>(_buf.data());
             out.append("laddr=");
             addr->sx25_addr.x25_addr[15] = 0;
-            out.append(addr->sx25_addr.x25_addr);
+            json_escape_string(out, addr->sx25_addr.x25_addr, strlen(addr->sx25_addr.x25_addr));
             break;
         }
         case AF_INET6: {

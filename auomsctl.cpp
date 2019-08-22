@@ -530,11 +530,26 @@ void kill_service_proc(const std::string& comm) {
     }
 }
 
+
 void service_cmd(const std::string& svc_cmd, const std::string& name) {
-    std::string path = get_service_util_path();
+    std::string path;
     std::vector<std::string> args;
-    args.emplace_back(name);
-    args.emplace_back(svc_cmd);
+
+    if (PathExists(SYSTEMCTL_PATH)) {
+        path = SYSTEMCTL_PATH;
+        args.emplace_back(svc_cmd);
+        args.emplace_back(name);
+    } else {
+        path = "/sbin/service";
+        if (!PathExists(path)) {
+            path = "/usr/sbin/service";
+            if (!PathExists(path)) {
+                throw std::runtime_error("Could not find path to 'service' utility");
+            }
+        }
+        args.emplace_back(name);
+        args.emplace_back(svc_cmd);
+    }
 
     std::string cmd_str = path;
     for (auto& arg: args) {
@@ -682,9 +697,9 @@ int enable_auoms() {
             }
         }
 
-        if (!is_auditd_plugin_enabled()) {
-            set_auditd_plugin_status(true);
-            if (PathExists(AUDITD_BIN)) {
+        if (PathExists(AUDITD_BIN)) {
+            if (!is_auditd_plugin_enabled()) {
+                set_auditd_plugin_status(true);
                 if (!restart_auditd_service()) {
                     return 3;
                 }
@@ -832,8 +847,13 @@ int show_auoms_state() {
             }
         } else {
             if (!is_auditd_plugin_enabled()) {
-                std::cout << "partially-enabled" << std::endl;
-                return 4;
+                if (PathExists(AUDITD_BIN)) {
+                    std::cout << "partially-enabled" << std::endl;
+                    return 4;
+                } else {
+                    std::cout << "running" << std::endl;
+                    return 0;
+                }
             } else if (!is_service_proc_running(AUOMS_COMM)) {
                 std::cout << "enabled" << std::endl;
                 return 2;
