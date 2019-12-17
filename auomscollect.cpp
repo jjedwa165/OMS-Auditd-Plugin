@@ -228,6 +228,16 @@ bool DoNetlinkCollection(RawEventAccumulator& accumulator) {
         }
     });
 
+    Netlink status_netlink;
+
+    Logger::Info("Connecting to AUDIT NETLINK socket (for status)");
+    ret = status_netlink.Open(nullptr);
+    if (ret != 0) {
+        Logger::Error("Failed to open AUDIT NETLINK connection: %s", std::strerror(-ret));
+        return false;
+    }
+    Defer _close_status_netlink([&status_netlink]() { status_netlink.Close(); });
+
     Signals::SetExitHandler([&_stop_gate]() { _stop_gate.Open(); });
 
     auto _last_pid_check = std::chrono::steady_clock::now();
@@ -249,7 +259,7 @@ bool DoNetlinkCollection(RawEventAccumulator& accumulator) {
             _last_pid_check = now;
             pid = 0;
             int ret;
-            ret = NetlinkRetry([&netlink,&pid]() { return netlink.AuditGetPid(pid); });
+            ret = NetlinkRetry([&status_netlink,&pid]() { return status_netlink.AuditGetPid(pid); });
             if (ret != 0) {
                 if (ret == -ECANCELED || ret == -ENOTCONN) {
                     if (!Signals::IsExit()) {

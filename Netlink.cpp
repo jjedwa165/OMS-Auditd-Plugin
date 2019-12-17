@@ -46,6 +46,15 @@ int Netlink::Open(reply_fn_t&& default_msg_handler_fn) {
         return -saved_errno;
     }
 
+    // Prevent ENOBUFS when messages generated faster then can be received.
+    int on = 1;
+    if (setsockopt(fd, SOL_NETLINK, NETLINK_NO_ENOBUFS, &on, sizeof(on)) != 0) {
+        auto saved_errno = errno;
+        Logger::Error("Cannot set NETLINK_NO_ENOBUFS option on AUDIT NETLINK socket: %s", std::strerror(errno));
+        close(fd);
+        return -saved_errno;
+    }
+
     _fd = fd;
     _default_msg_handler_fn = std::move(default_msg_handler_fn);
 
