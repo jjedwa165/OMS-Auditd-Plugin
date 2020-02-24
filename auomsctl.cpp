@@ -875,61 +875,67 @@ int tap_audit() {
 
     uint32_t our_pid = getpid();
 
-    Logger::Info("Checking assigned audit pid");
-    audit_status status;
-    ret = NetlinkRetry([&netlink,&status]() { return netlink.AuditGet(status); } );
-    if (ret != 0) {
-        Logger::Error("Failed to get audit status: %s", std::strerror(-ret));
-        return 1;
-    }
-    uint32_t pid = status.pid;
-    uint32_t enabled = status.enabled;
+    if (!netlink.MultiCastEnabled()) {
 
-    if (pid != 0 && PathExists("/proc/" + std::to_string(pid))) {
-        Logger::Error("There is another process (pid = %d) already assigned as the audit collector", pid);
-        return 1;
-    }
+        Logger::Error("Failed to open multicast AUDIT NETLINK connection, using standard socket");
+        Logger::Info("Checking assigned audit pid");
 
-    Logger::Info("Enabling AUDIT event collection");
-    int retry_count = 0;
-    do {
-        if (retry_count > 5) {
-            Logger::Error("Failed to set audit pid: Max retried exceeded");
-        }
-        ret = netlink.AuditSetPid(our_pid);
-        if (ret == -ETIMEDOUT) {
-            // If setpid timedout, it may have still succeeded, so re-fetch pid
-            ret = NetlinkRetry([&netlink,&status,&pid]() { return netlink.AuditGetPid(pid); });
-            if (ret != 0) {
-                Logger::Error("Failed to get audit pid: %s", std::strerror(-ret));
-                return 1;
-            }
-        } else if (ret != 0) {
-            Logger::Error("Failed to set audit pid: %s", std::strerror(-ret));
-            return 1;
-        } else {
-            break;
-        }
-        retry_count += 1;
-    } while (pid != our_pid);
-    if (enabled == 0) {
-        ret = NetlinkRetry([&netlink,&status]() { return netlink.AuditSetEnabled(1); });
+        audit_status status;
+        ret = NetlinkRetry([&netlink, &status]() { return netlink.AuditGet(status); });
         if (ret != 0) {
-            Logger::Error("Failed to enable auditing: %s", std::strerror(-ret));
+            Logger::Error("Failed to get audit status: %s", std::strerror(-ret));
             return 1;
         }
-    }
+        uint32_t pid = status.pid;
+        uint32_t enabled = status.enabled;
 
-    Defer _revert_enabled([&netlink,enabled]() {
+        if (pid != 0 && PathExists("/proc/" + std::to_string(pid))) {
+            Logger::Error("There is another process (pid = %d) already assigned as the audit collector", pid);
+            return 1;
+        }
+
+        Logger::Info("Enabling AUDIT event collection");
+        int retry_count = 0;
+        do {
+            if (retry_count > 5) {
+                Logger::Error("Failed to set audit pid: Max retried exceeded");
+            }
+            ret = netlink.AuditSetPid(our_pid);
+            if (ret == -ETIMEDOUT) {
+                // If setpid timedout, it may have still succeeded, so re-fetch pid
+                ret = NetlinkRetry([&netlink, &status, &pid]() { return netlink.AuditGetPid(pid); });
+                if (ret != 0) {
+                    Logger::Error("Failed to get audit pid: %s", std::strerror(-ret));
+                    return 1;
+                }
+            } else if (ret != 0) {
+                Logger::Error("Failed to set audit pid: %s", std::strerror(-ret));
+                return 1;
+            } else {
+                break;
+            }
+            retry_count += 1;
+        } while (pid != our_pid);
         if (enabled == 0) {
-            int ret;
-            ret = NetlinkRetry([&netlink]() { return netlink.AuditSetEnabled(1); });
+            ret = NetlinkRetry([&netlink, &status]() { return netlink.AuditSetEnabled(1); });
             if (ret != 0) {
                 Logger::Error("Failed to enable auditing: %s", std::strerror(-ret));
-                return;
+                return 1;
             }
         }
-    });
+
+        Defer _revert_enabled([&netlink, enabled]() {
+            if (enabled == 0) {
+                int ret;
+                ret = NetlinkRetry([&netlink]() { return netlink.AuditSetEnabled(1); });
+                if (ret != 0) {
+                    Logger::Error("Failed to enable auditing: %s", std::strerror(-ret));
+                    return;
+                }
+            }
+        });
+
+    }
 
     Signals::SetExitHandler([&_stop_gate]() { _stop_gate.Open(); });
 
@@ -938,15 +944,17 @@ int tap_audit() {
             return 0;
         }
 
-        pid = 0;
-        auto ret = NetlinkRetry([&netlink,&pid]() { return netlink.AuditGetPid(pid); });
-        if (ret != 0) {
-            Logger::Error("Failed to get audit pid: %s", std::strerror(-ret));
-            return 1;
-        } else {
-            if (pid != our_pid) {
-                Logger::Warn("Another process (pid = %d) has taken over AUDIT NETLINK event collection.", pid);
+        if (!netlink.MultiCastEnabled()) {
+            uint32_t pid = 0;
+            ret = NetlinkRetry([&netlink, &pid]() { return netlink.AuditGetPid(pid); });
+            if (ret != 0) {
+                Logger::Error("Failed to get audit pid: %s", std::strerror(-ret));
                 return 1;
+            } else {
+                if (pid != our_pid) {
+                    Logger::Warn("Another process (pid = %d) has taken over AUDIT NETLINK event collection.", pid);
+                    return 1;
+                }
             }
         }
     }

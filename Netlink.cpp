@@ -24,6 +24,62 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <sys/utsname.h>
+
+int Netlink::Bind(int fd) {
+
+    // Check if Kernel supports multicast (3.16+)
+    // https://bugzilla.redhat.com/show_bug.cgi?id=887992
+    Logger::Info("Checking for auditd multicast support");
+
+    struct utsname kernel_version = { 0 };
+    auto saved_errno = errno;
+    int ret = 0;
+
+    ret = uname( &kernel_version );
+    if (ret == -1) {
+        Logger::Error("Error checking kernel version: %s", std::strerror(errno));
+        return -saved_errno;
+    }
+    else {
+        unsigned int major = 0, minor = 0;
+        sscanf( kernel_version.release, "%u.%u.%*s", &major, &minor );
+
+        bool multicast_availiable = false;
+        if (major > 3) {
+            multicast_availiable = true;
+        } else if (major <= 3) {
+            if (major == 3 && minor >= 16) {
+                multicast_availiable = true;
+            }
+        }
+
+        if (multicast_availiable) {
+            // Construct Netlink Socket params
+            // http://people.redhat.com/rbriggs/audit-multicast-listen/audit-multicast-listen.c
+            const struct sockaddr_nl sanl = {
+                    .nl_family	= AF_NETLINK,
+                    .nl_pad     = 0,
+                    .nl_pid		= 0,
+                    .nl_groups	= 1,
+            };
+
+            ret = bind(fd, (const struct sockaddr *)(&sanl), sizeof(sanl));
+            if (ret == -1) {
+                Logger::Error("Error binding multicast AUDIT NETLINK socket: %s", std::strerror(errno));
+                return -saved_errno;
+            }
+
+            _multicast_enabled = true;
+
+        } else {
+            Logger::Info("auditd multicast not supported for kernel %s", kernel_version.release);
+            ret = -1;
+        }
+    }
+
+    return ret;
+}
 
 int Netlink::Open(reply_fn_t&& default_msg_handler_fn) {
     std::unique_lock<std::mutex> _lock(_run_mutex);
@@ -45,6 +101,9 @@ int Netlink::Open(reply_fn_t&& default_msg_handler_fn) {
         }
         return -saved_errno;
     }
+
+    // Attempt to bind multicast address to socket fd
+    this->Bind(fd);
 
     _fd = fd;
     _default_msg_handler_fn = std::move(default_msg_handler_fn);

@@ -31,7 +31,7 @@ class Netlink: private RunBase {
 public:
     typedef std::function<bool(uint16_t type, uint16_t flags, const void* data, size_t len)> reply_fn_t;
 
-    Netlink(): _fd(-1), _sequence(1), _default_msg_handler_fn(), _quite(false), _known_seq(), _replies(), _data() {}
+    Netlink(): _fd(-1), _multicast_enabled(false),_sequence(1), _default_msg_handler_fn(), _quite(false), _known_seq(), _replies(), _data() {}
 
     void SetQuite() { _quite = true; }
 
@@ -77,13 +77,17 @@ public:
         return Send(AUDIT_DEL_RULE, rule.Data(), rule.Size(), nullptr);
     }
 
+    bool MultiCastEnabled(){
+        return _multicast_enabled;
+    }
+
 protected:
     void on_stopping() override;
     void on_stop() override;
     void run() override;
 
 private:
-
+    int Bind(int fd);
     class ReplyRec {
     public:
         explicit ReplyRec(reply_fn_t&& fn): _req_time(std::chrono::steady_clock::now()), _done(false), _fn(std::move(fn)), _promise() {}
@@ -102,6 +106,7 @@ private:
     void handle_msg(uint16_t msg_type, uint16_t msg_flags, uint32_t msg_seq, const void* payload_data, size_t payload_len);
 
     int _fd;
+    bool _multicast_enabled;
     uint32_t _sequence;
     reply_fn_t _default_msg_handler_fn;
     bool _quite;
