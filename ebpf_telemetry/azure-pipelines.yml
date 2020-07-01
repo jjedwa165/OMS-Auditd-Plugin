@@ -1,18 +1,36 @@
 trigger: none
 
+variables:
+- group: pipeline_vargroup
+
 jobs:
-  - job: ubuntu
+  - job: Kernel_5
     pool:
-      vmImage: ubuntu-18.04
+      name: $(agentPoolName)
+      demands:
+      - Agent.Name -equals $(hostname1)
     workspace:
       clean: all
     steps:
       - script: |
-          sudo apt-get update
-        displayName: Linux Package Dependancies
-      - script: |
+          cd ebpf_telemetry          
           rm -rf ./build
           mkdir ./build && cd build
           cmake ..
+          make all
         displayName: CMake Build All
-
+  - job: Kernel_4_12
+    pool:
+      name: $(agentPoolName)
+      demands:
+      - Agent.Name -equals $(hostname2)
+    workspace:
+      clean: all
+    steps:
+      - script: |
+          cd ebpf_telemetry          
+          rm -rf ./build
+          mkdir ./build && cd build
+          cmake ..
+          make all
+        displayName: CMake Build All
