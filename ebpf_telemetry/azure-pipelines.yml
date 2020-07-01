@@ -1,0 +1,18 @@
+trigger: none
+
+jobs:
+  - job: ubuntu
+    pool:
+      vmImage: ubuntu-18.04
+    workspace:
+      clean: all
+    steps:
+      - script: |
+          sudo apt-get update
+        displayName: Linux Package Dependancies
+      - script: |
+          rm -rf ./build
+          mkdir ./build && cd build
+          cmake ..
+        displayName: CMake Build All
+
