@@ -83,6 +83,30 @@ void ebpf_telemetry_close_all(){
     bpf_object__close(bpf_obj);
 }
 
+void populate_config_offsets(config_s *c)
+{
+    c->ppid[0] = 2256; c->ppid[1] = 2244; c->ppid[2] = -1;
+    c->auid[0] = 2920; c->auid[1] = -1;
+    c->ses[0] = 2924; c->ses[1] = -1;
+
+    c->cred[0] = 2712; c->cred[1] = -1;
+    c->cred_uid[0] = 4; c->cred_uid[1] = -1;
+    c->cred_gid[0] = 8; c->cred_gid[1] = -1;
+    c->cred_euid[0] = 20; c->cred_euid[1] = -1;
+    c->cred_suid[0] = 12; c->cred_suid[1] = -1;
+    c->cred_fsuid[0] = 28; c->cred_fsuid[1] = -1;
+    c->cred_egid[0] = 24; c->cred_egid[1] = -1;
+    c->cred_sgid[0] = 16; c->cred_sgid[1] = -1;
+    c->cred_fsgid[0] = 32; c->cred_fsgid[1] = -1;
+
+    c->tty[0] = 2816; c->tty[1] = 408; c->tty[2] = 368; c->tty[3] = -1;
+    c->comm[0] = 2728; c->comm[1] = -1;
+    c->exe_dentry[0] = 2064; c->exe_dentry[1] = 928; c->exe_dentry[2] = -1;
+    c->dentry_parent = 24;
+    c->dentry_name = 40;
+}
+
+
 int ebpf_telemetry_start(void (*event_cb)(void *ctx, int cpu, void *data, __u32 size), void (*events_lost_cb)(void *ctx, int cpu, __u64 lost_cnt))
 {
     unsigned int major = 0, minor = 0;
@@ -182,7 +206,8 @@ int ebpf_telemetry_start(void (*event_cb)(void *ctx, int cpu, void *data, __u32 
     //update the config with the userland pid
     unsigned int config_entry = 0;
     config_s config;
-    config.pid = getpid();
+    config.userland_pid = getpid();
+    populate_config_offsets(&config);
     if (bpf_map_update_elem(config_map_fd, &config_entry, &config, BPF_ANY)) {
         fprintf(stderr, "ERROR: failed to set config: '%s'\n", strerror(errno));
         return 1;

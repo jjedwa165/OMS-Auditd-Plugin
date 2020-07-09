@@ -28,6 +28,14 @@
 #define FULL_MAX_ARGS_ARR (TOTAL_MAX_ARGS * ARGSIZE)
 #define LAST_ARG (FULL_MAX_ARGS_ARR - ARGSIZE)
 
+#define FILEPATH_NUMDIRS 128
+#define FILEPATH_DIRSIZE 256
+
+#define TTYSIZE 64
+#define COMMSIZE 16
+
+#define NUM_REDIRECTS 8
+
 // __NR_openat
 typedef struct e_openat {
     char    filename[PATH_MAX];
@@ -51,9 +59,23 @@ typedef struct e_socket {
 typedef struct e_rec {
     unsigned long int  code_bytes; //Always 0xdeadbeef = 3735928559
     unsigned int       version;
-    unsigned long long syscall_id;
+    unsigned long      syscall_id;
     unsigned int       pid;
-    long long int      return_code;
+    long int           return_code;
+    unsigned int       ppid;
+    unsigned int       ses;
+    char               tty[TTYSIZE];
+    char               comm[COMMSIZE];
+    char               exe[FILEPATH_NUMDIRS][FILEPATH_DIRSIZE]; 
+    unsigned int       auid;
+    unsigned int       uid;
+    unsigned int       gid;
+    unsigned int       euid;
+    unsigned int       suid;
+    unsigned int       fsuid;
+    unsigned int       egid;
+    unsigned int       sgid;
+    unsigned int       fsgid;
     union e_data {
         event_openat_s openat;
         event_execve_s execve;
@@ -63,7 +85,50 @@ typedef struct e_rec {
 
 // configuration
 typedef struct conf {
-    unsigned int pid;
+    unsigned int userland_pid;
+    unsigned int timesec[NUM_REDIRECTS];
+    unsigned int timensec[NUM_REDIRECTS];
+    unsigned int serial[NUM_REDIRECTS];
+    unsigned int arch[NUM_REDIRECTS];
+    unsigned int arg0[NUM_REDIRECTS];
+    unsigned int arg1[NUM_REDIRECTS];
+    unsigned int arg2[NUM_REDIRECTS];
+    unsigned int arg3[NUM_REDIRECTS];
+    unsigned int ppid[NUM_REDIRECTS];
+    unsigned int auid[NUM_REDIRECTS];
+    unsigned int cred[NUM_REDIRECTS];
+    unsigned int cred_uid[NUM_REDIRECTS];
+    unsigned int cred_gid[NUM_REDIRECTS];
+    unsigned int cred_euid[NUM_REDIRECTS];
+    unsigned int cred_suid[NUM_REDIRECTS];
+    unsigned int cred_fsuid[NUM_REDIRECTS];
+    unsigned int cred_egid[NUM_REDIRECTS];
+    unsigned int cred_sgid[NUM_REDIRECTS];
+    unsigned int cred_fsgid[NUM_REDIRECTS];
+    unsigned int ses[NUM_REDIRECTS];
+    unsigned int tty[NUM_REDIRECTS];
+    unsigned int comm[NUM_REDIRECTS];
+    unsigned int exe_dentry[NUM_REDIRECTS];
+    unsigned int dentry_parent;
+    unsigned int dentry_name;
+    unsigned int cwd[NUM_REDIRECTS];
+    unsigned int proctitle[NUM_REDIRECTS];
+    unsigned int name_count[NUM_REDIRECTS];
+    unsigned int names_head[NUM_REDIRECTS];
+    unsigned int names_name[NUM_REDIRECTS];
+    unsigned int names_namelen[NUM_REDIRECTS];
+    unsigned int names_ino[NUM_REDIRECTS];
+    unsigned int names_dev[NUM_REDIRECTS];
+    unsigned int names_mode[NUM_REDIRECTS];
+    unsigned int names_ouid[NUM_REDIRECTS];
+    unsigned int names_ogid[NUM_REDIRECTS];
+    unsigned int names_rdev[NUM_REDIRECTS];
+    unsigned int names_type[NUM_REDIRECTS];
+    unsigned int names_cap_fp[NUM_REDIRECTS];
+    unsigned int names_cap_fi[NUM_REDIRECTS];
+    unsigned int names_cap_fe[NUM_REDIRECTS];
+    unsigned int names_cap_fver[NUM_REDIRECTS];
+    unsigned int names_cap_frootid[NUM_REDIRECTS];
 } config_s;
 
 #endif
