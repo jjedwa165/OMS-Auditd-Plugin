@@ -232,7 +232,11 @@ int ebpf_telemetry_start(void (*event_cb)(void *ctx, int cpu, void *data, __u32 
 
     int i = 0;
     while ((ret = perf_buffer__poll(pb, 1000)) >= 0 ) {
+    #ifdef TESTING
         if (i++ > 10) break;
+    #else
+        i = 1; // loop forever, assignment avoid unused var
+    #endif
     }
 
     ebpf_telemetry_close_all();

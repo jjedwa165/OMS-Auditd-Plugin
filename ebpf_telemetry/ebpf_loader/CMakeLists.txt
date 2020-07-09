@@ -72,6 +72,11 @@ ExternalProject_Add(libbpf
     INSTALL_COMMAND ""
     )
 
+if( TESTING )
+    message("Testing Build....")
+    add_definitions(-DTESTING)
+endif()
+
 set(libbpf_SOURCE_DIR ${CMAKE_BINARY_DIR}/ebpf_loader/libbpf/src/libbpf)
 
 # make ebpf_loader
