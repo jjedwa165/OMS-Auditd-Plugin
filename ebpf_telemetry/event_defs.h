@@ -66,10 +66,10 @@ typedef struct e_rec {
     long int           return_code;
     unsigned int       ppid;
     unsigned int       ses;
-    char               tty[TTYSIZE];
-    char               comm[COMMSIZE];
-    char               exe[FILEPATH_NUMDIRS][FILEPATH_DIRSIZE]; 
-    char               pwd[FILEPATH_NUMDIRS][FILEPATH_DIRSIZE]; 
+    // char               tty[TTYSIZE];
+    // char               comm[COMMSIZE];
+    // char               exe[FILEPATH_NUMDIRS][FILEPATH_DIRSIZE]; 
+    // char               pwd[FILEPATH_NUMDIRS][FILEPATH_DIRSIZE]; 
     unsigned int       auid;
     unsigned int       uid;
     unsigned int       gid;

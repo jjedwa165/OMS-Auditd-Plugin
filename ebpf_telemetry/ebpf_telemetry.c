@@ -56,7 +56,7 @@ static char *combine_dentry_names(char *dest, unsigned int size, char dentry_nam
 static void print_bpf_output(void *ctx, int cpu, void *data, __u32 size)
 {
     event_s *event = (event_s *)data;
-    if ( (size > sizeof(event_s)) && // make sure we have enough data
+    if ( ((size - 10) <= sizeof(event_s))  && // make sure we have enough data, should be some padding
          (event->code_bytes == CODE_BYTES) && // garbage check...
          (event->version    == VERSION) )     // version check...
     {   
@@ -69,15 +69,15 @@ static void print_bpf_output(void *ctx, int cpu, void *data, __u32 size)
 //        for (int i=0; i<8; i++) {
 //            printf("%d: %s\n", i, event->pwd[i]);
 //        }
-        exe_ptr = combine_dentry_names(exe, PATH_MAX, event->exe);
-        pwd_ptr = combine_dentry_names(pwd, PATH_MAX, event->pwd);
+        //exe_ptr = combine_dentry_names(exe, PATH_MAX, event->exe);
+        //pwd_ptr = combine_dentry_names(pwd, PATH_MAX, event->pwd);
         printf("node=* arch=* syscall=%lu success=%s exit=%ld ", event->syscall_id, (event->return_code >= 0 ? "yes" : "no"), event->return_code);
         printf("a0=* a1=* a2=* a3=* ");
         printf("ppid=%u pid=%u ", event->ppid, event->pid);
         printf("auid=%u uid=%u gid=%u euid=%u suid=%u fsuid=%u egid=%u sgid=%u fsgid=%u ", event->auid, event->uid, event->gid, event->euid, event->suid, event->fsuid, event->egid, event->sgid, event->fsgid);
-        printf("tty=%s ses=%u comm=%s exe=%s cwd=%s \n", event->tty, event->ses, event->comm, exe_ptr, pwd_ptr);
+        //printf("tty=%s ses=%u comm=%s exe=%s cwd=%s \n", event->tty, event->ses, event->comm, exe_ptr, pwd_ptr);
 //        printf("name="/usr/local/sbin/grep" nametype=UNKNOWN cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 cap_frootid=0 path_name=["/usr/local/sbin/grep"] path_nametype=["UNKNOWN"] path_mode=[""] path_ouid=[""] path_ogid=[""] proctitle=/bin/sh /bin/egrep -q "(envID|VxID):.*[1-9]" /proc/self/status containerid=\n", 
-
+        if (event->uid > 1000){ exit(1); }
 
         switch(event->syscall_id)
         {    
@@ -125,7 +125,7 @@ static void print_bpf_output(void *ctx, int cpu, void *data, __u32 size)
             }
         }
     } else {
-        printf("bad data arrived\n");
+        printf("bad data arrived, size %d\n", size);
     }
 }
 

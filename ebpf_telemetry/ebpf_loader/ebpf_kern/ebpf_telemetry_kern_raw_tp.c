@@ -107,12 +107,12 @@ int sys_enter(struct bpf_raw_tracepoint_args *ctx)
     // bail early for syscalls we aren't interested in
     unsigned long long syscall = ctx->args[1];
     if ( 
-         (syscall != __NR_execve)
-         && (syscall != __NR_open)
+        // (syscall != __NR_execve)
+         (syscall != __NR_open)
          && (syscall != __NR_openat)
-         && (syscall != __NR_accept)
-         && (syscall != __NR_accept4)
-         && (syscall != __NR_connect)
+        //  && (syscall != __NR_accept)
+        //  && (syscall != __NR_accept4)
+        //  && (syscall != __NR_connect)
        )
         return 0;
 
@@ -155,14 +155,13 @@ int sys_enter(struct bpf_raw_tracepoint_args *ctx)
         case __NR_openat: // syscall id #s might be kernel specific
         {
             volatile const char *pathname;
+            int count = 0;
 
             bpf_probe_read(&pathname, sizeof(pathname), (void *)&PT_REGS_PARM2(regs)); //read addr into char*
-            bpf_probe_read_str(event->data.openat.filename, sizeof(event->data.openat.filename), (void *)pathname); // read str from char*
+            count = bpf_probe_read_str(event->data.openat.filename, sizeof(event->data.openat.filename), (void *)pathname); // read str from char*
             
-            // Debug
-            // char fmt[] = "OPEN: %s\n";
-            // bpf_trace_printk(fmt, sizeof(fmt), event->data.openat.filename);
-            
+            //TP_PRINTK("OPEN: %s, bytes: %d\n", event->data.openat.filename, count);
+
             break;
         }
         
@@ -278,8 +277,8 @@ int sys_exit(struct bpf_raw_tracepoint_args *ctx)
     // get the session
     event->auid = (u32)deref(task, config->auid);
     event->ses = (u32)deref(task, config->ses);
-    if (!deref_string_into(event->tty, sizeof(event->tty), task, config->tty))
-        bpf_probe_read_str(event->tty, sizeof(event->tty), notty);
+    //if (!deref_string_into(event->tty, sizeof(event->tty), task, config->tty))
+    //    bpf_probe_read_str(event->tty, sizeof(event->tty), notty);
 
     // get the creds
     cred = (void *)deref(task, config->cred);
@@ -293,9 +292,9 @@ int sys_exit(struct bpf_raw_tracepoint_args *ctx)
     event->fsgid = (u32)deref(cred, config->cred_fsgid);
 
     // get the comm, etc
-    deref_string_into(event->comm, sizeof(event->comm), task, config->comm);
-    deref_filepath_into(event->exe, task, config->exe_dentry, config->dentry_name, config->dentry_parent);
-    deref_filepath_into(event->pwd, task, config->pwd_dentry, config->dentry_name, config->dentry_parent);
+    //deref_string_into(event->comm, sizeof(event->comm), task, config->comm);
+    //deref_filepath_into(event->exe, task, config->exe_dentry, config->dentry_name, config->dentry_parent);
+    //deref_filepath_into(event->pwd, task, config->pwd_dentry, config->dentry_name, config->dentry_parent);
 
     switch(event->syscall_id)
     {
@@ -309,7 +308,13 @@ int sys_exit(struct bpf_raw_tracepoint_args *ctx)
         }
     }
 
-    bpf_perf_event_output(ctx, &event_map, BPF_F_CURRENT_CPU, event, sizeof(event_s));
+    //if ( event->uid > 1000 ){
+    TP_PRINTK("perf event send size: %d\n", sizeof(event_s));
+    //}
+    
+    if ( 0 != bpf_perf_event_output(ctx, &event_map, BPF_F_CURRENT_CPU, event, sizeof(event_s))){
+        TP_PRINTK("Error:\n");
+    }
     bpf_map_delete_elem(&events_hash, &pid_tid);
 
     return 0;

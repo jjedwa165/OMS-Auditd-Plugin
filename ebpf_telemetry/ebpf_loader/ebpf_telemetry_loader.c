@@ -33,7 +33,7 @@
 //https://elixir.free-electrons.com/linux/latest/source/samples/bpf/bpf_load.c#L339
 //https://stackoverflow.com/questions/57628432/ebpf-maps-for-one-element-map-type-and-kernel-user-space-communication
 
-#define MAP_PAGE_SIZE (16 * 1024)
+#define MAP_PAGE_SIZE (32)
 //#define MAP_PAGE_SIZE 256
 //#define MAP_PAGE_SIZE 1024
 #define DEBUGFS "/sys/kernel/debug/tracing/"
@@ -200,6 +200,13 @@ int ebpf_telemetry_start(void (*event_cb)(void *ctx, int cpu, void *data, __u32 
 {
     unsigned int major = 0, minor = 0;
     
+    // int rt;
+    // struct rlimit r = {RLIM_INFINITY, RLIM_INFINITY};
+    // if ((rt = setrlimit(RLIMIT_MEMLOCK, &r))) {
+    //    fprintf(stderr, "rlimit error, '%s'\n", strerror(errno));
+    //    return 1;
+    // }
+    
     if ( uname(&uname_s) ){
         fprintf(stderr, "Couldn't find uname, '%s'\n", strerror(errno));
         return 1;
@@ -346,7 +353,7 @@ int ebpf_telemetry_start(void (*event_cb)(void *ctx, int cpu, void *data, __u32 
 
     int i = 0;
     while ((ret = perf_buffer__poll(pb, 1000)) >= 0 ) {
-        if (i++ > 10) break;
+        //if (i++ > 10) break;
     }
 
     ebpf_telemetry_close_all();

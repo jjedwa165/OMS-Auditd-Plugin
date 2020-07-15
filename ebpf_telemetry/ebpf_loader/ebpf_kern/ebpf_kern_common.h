@@ -34,6 +34,16 @@
 #include <bpf_tracing.h>
 #include "../../event_defs.h"
 
+#define DEBUG
+
+#ifdef DEBUG
+#define TP_PRINTK( format, ... ) \
+    char fmt[] = format; \
+    bpf_trace_printk(fmt, sizeof(fmt), ##__VA_ARGS__ ); 
+#else
+#define TP_PRINTK ((void)0);
+#endif
+
 struct bpf_map_def SEC("maps") event_map = {
 	.type = BPF_MAP_TYPE_PERF_EVENT_ARRAY, //BPF_MAP_TYPE_HASH doesnt stack....
 	.key_size = sizeof(int),
